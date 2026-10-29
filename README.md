@@ -53,6 +53,22 @@ NEBIUS_NANO_MODEL=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
 NEBIUS_ULTRA_MODEL=nvidia/Nemotron-3-Ultra-550b-a55b
 ```
 
+### 3. Launch the Interactive Web Application
+
+DynamicMCP features a modern, full-stack Web Studio for trying out tool assembly and execution directly from your browser:
+
+```bash
+# Start the web app and REST backend
+dynamicmcp serve --port 8000
+```
+Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+
+- ⚡ **Assembly Studio:** 1-Click live presets (Open-Meteo, NASA Mars Weather, World Bank OpenAPI, Exchange Rates) or paste your own raw contracts.
+- 📜 **Code & Policy Inspector:** View synthesized FastMCP code, extracted ToolSpecs, and NemoClaw sandbox policies in real-time.
+- 🛠️ **Live Execution Drawer:** Test and invoke newly assembled tools with dynamic JSON parameters.
+- 🛡️ **NemoClaw Sandbox:** Inspect kernel Landlock LSM rules and domain-scoped network egress boundaries.
+- 📊 **Audit Trail:** View the deterministic lifecycle state transitions and execution latency telemetry.
+
 ---
 
 ## 🌟 Live Demonstration Scenarios

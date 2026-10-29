@@ -147,10 +147,25 @@ class RegistryManager:
     async def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
         """Execute a registered tool function by name with automatic Pydantic coercion."""
         namespaced_name = tool_name if tool_name.startswith(f"{self.NAMESPACE_PREFIX}__") else f"{self.NAMESPACE_PREFIX}__{tool_name}"
-        if namespaced_name not in self._registered_tools:
-            raise KeyError(f"Tool '{namespaced_name}' is not registered in FastMCP registry")
+        target_name = None
 
-        tool_meta = self._registered_tools[namespaced_name]
+        if namespaced_name in self._registered_tools:
+            target_name = namespaced_name
+        elif tool_name in self._registered_tools:
+            target_name = tool_name
+        else:
+            # Fuzzy / prefix matching (e.g. tool name matches prefix of registered function)
+            prefix = f"{self.NAMESPACE_PREFIX}__{tool_name}"
+            for reg_k, meta in self._registered_tools.items():
+                if reg_k.startswith(prefix) or meta.get("tool_id") == tool_name or meta.get("tool_name") == tool_name:
+                    target_name = reg_k
+                    break
+
+        if not target_name:
+            available = list(self._registered_tools.keys())
+            raise KeyError(f"Tool '{namespaced_name}' is not registered in FastMCP registry. Available tools: {available}")
+
+        tool_meta = self._registered_tools[target_name]
         fn = tool_meta["function"]
 
         # Automatic Pydantic model conversion if argument was passed as dict

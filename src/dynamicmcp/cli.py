@@ -141,13 +141,22 @@ def run(tool_name: str, args: str):
 
 
 @main.command()
-@click.option("--host", default="127.0.0.1", help="Host interface to bind FastMCP.")
-@click.option("--port", default=8000, type=int, help="Port to serve FastMCP SSE.")
-def serve(host: str, port: int):
-    """Start FastMCP server for Hermes Agent connection."""
-    pipeline = DynamicMCPPipeline()
-    console.print(f"[bold green]Starting FastMCP Dynamic server on {host}:{port}...[/bold green]")
-    pipeline.registry.server.run(transport="sse", host=host, port=port)
+@click.option("--host", default="0.0.0.0", help="Host interface to bind.")
+@click.option("--port", default=8000, type=int, help="Port to serve.")
+@click.option("--reload", is_flag=True, default=False, help="Enable auto-reload for development.")
+def serve(host: str, port: int, reload: bool):
+    """Start the DynamicMCP Web Application & REST API."""
+    import uvicorn
+    console.print(Panel(
+        f"[bold green]Starting DynamicMCP Web Application[/bold green]\n\n"
+        f"• [bold]Local URL:[/bold] http://localhost:{port}\n"
+        f"• [bold]Network URL:[/bold] http://{host}:{port}\n"
+        f"• [bold]Interactive API Docs:[/bold] http://localhost:{port}/docs\n"
+        f"• [bold]Nebius Token Factory:[/bold] {settings.nebius_token_factory_url}",
+        title="DynamicMCP Server",
+        border_style="green",
+    ))
+    uvicorn.run("dynamicmcp.server:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":

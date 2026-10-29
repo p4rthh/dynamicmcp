@@ -37,6 +37,13 @@ dist/
 *.egg-info/
 .eggs/
 
+# Frontend Node modules
+node_modules/
+frontend/dist/
+
+# Test policies
+policies/test_*.yaml
+
 # IDE & Editor files
 .vscode/
 .idea/
