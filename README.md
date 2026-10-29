@@ -49,30 +49,48 @@ NEBIUS_API_KEY=your_nebius_api_key
 NEBIUS_PROJECT_ID=your_nebius_project_id
 NEBIUS_TOKEN_FACTORY_URL=https://api.studio.nebius.ai/v1
 NEBIUS_JOBS_API_URL=https://api.nebius.ai/v1/jobs
+NEBIUS_NANO_MODEL=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
+NEBIUS_ULTRA_MODEL=nvidia/Nemotron-3-Ultra-550b-a55b
 ```
 
-### 3. Ingesting an API on the Fly
+---
 
-Pass any raw `curl` command or OpenAPI specification:
+## 🌟 Live Demonstration Scenarios
 
+DynamicMCP handles any unfamiliar tool contract, whether passed as raw curl, local file, or remote OpenAPI URL.
+
+### Scenario A: Remote OpenAPI Specification (World Bank Data360)
+Pass a live GitHub URL pointing to an OpenAPI JSON/YAML spec:
+```bash
+dynamicmcp ingest "https://raw.githubusercontent.com/worldbank/open-api-specs/refs/heads/main/Data360%20Open_API.json" --name "world_bank_data360"
+
+# Query live World Bank indicators
+dynamicmcp run dynamic__get_data --args '{"DATABASE_ID": "WB_WDI", "INDICATOR": "WB_WDI_SP_POP_TOTL", "REF_AREA": "USA", "timePeriodFrom": "2020", "timePeriodTo": "2022"}'
+```
+
+### Scenario B: Authenticated REST API (NASA InSight Mars Weather)
+Pass an authenticated NASA curl request with an API key:
+```bash
+dynamicmcp ingest "curl -X GET 'https://api.nasa.gov/insight_weather/?api_key=YOUR_KEY&feedtype=json&ver=1.0'" --name "nasa_mars_weather"
+
+# Query real Martian Sol measurements
+dynamicmcp run dynamic__get_mars_weather
+```
+
+### Scenario C: Public Weather API (Open-Meteo)
 ```bash
 dynamicmcp ingest 'curl -X GET "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current_weather=true"' --name weather_tool
+
+# Query Berlin weather
+dynamicmcp run dynamic__weather_tool__v1_forecast --args '{"latitude": 52.52, "longitude": 13.41}'
 ```
 
-### 4. Inspecting Registered Tools
-
+### Inspecting All Assembled Tools in SQLite
 ```bash
 dynamicmcp list
 ```
 
-### 5. Running the Synthesized Tool
-
-```bash
-dynamicmcp run dynamic__weather_tool__v1_forecast --args '{"latitude": 52.52, "longitude": 13.41, "current_weather": true}'
-```
-
-### 6. Starting FastMCP Server for Hermes Agent
-
+### Starting the FastMCP Server (Stdio or SSE for Hermes Agent / Claude Desktop)
 ```bash
 dynamicmcp serve --port 8000
 ```
