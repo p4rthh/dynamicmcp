@@ -48,7 +48,7 @@ class VerificationRunner:
     @staticmethod
     def _get_sanitized_env(extra: Optional[dict[str, str]] = None) -> dict[str, str]:
         """Produce a sanitized environment dict blocking host credentials and tokens."""
-        # Baseline safe variables
+        # Baseline safe variables (exclude host HOME to prevent access to ~/.ssh or ~/.config)
         safe_keys = {
             "PATH",
             "SYSTEMROOT",
@@ -59,7 +59,6 @@ class VerificationRunner:
             "TEMP",
             "TMP",
             "VIRTUAL_ENV",
-            "HOME",
         }
         sanitized = {k: v for k, v in os.environ.items() if k in safe_keys}
 
@@ -83,8 +82,11 @@ class VerificationRunner:
             tool_path.write_text(code, encoding="utf-8")
             test_path.write_text(test_script, encoding="utf-8")
 
-            # Execute pytest as subprocess with scrubbed environment
-            clean_env = self._get_sanitized_env({"PYTHONPATH": str(tmppath)})
+            # Execute pytest as subprocess with scrubbed environment and isolated scratch HOME
+            clean_env = self._get_sanitized_env({
+                "PYTHONPATH": str(tmppath),
+                "HOME": str(tmppath),
+            })
             proc = await asyncio.create_subprocess_exec(
                 sys.executable,
                 "-m",

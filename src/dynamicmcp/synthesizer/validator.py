@@ -58,6 +58,8 @@ class SecurityNodeVisitor(ast.NodeVisitor):
         self.violations: list[str] = []
         self.has_fastmcp_instance: bool = False
         self.tool_functions: list[str] = []
+        self.os_aliases: set[str] = {"os"}
+        self.blocked_imported_names: set[str] = set()
 
     def visit_Attribute(self, node: ast.Attribute):
         # Prohibit dangerous reflective attribute access
@@ -68,23 +70,24 @@ class SecurityNodeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
-        # Check direct function calls: eval(...), exec(...)
+        # Check direct function calls: eval(...), exec(...), system(...)
         if isinstance(node.func, ast.Name):
-            if node.func.id in self.BLOCKED_FUNCTIONS:
+            func_name = node.func.id
+            if func_name in self.BLOCKED_FUNCTIONS or func_name in self.BLOCKED_OS_CALLS or func_name in self.blocked_imported_names:
                 self.violations.append(
-                    f"Line {node.lineno}: Disallowed builtin call '{node.func.id}()'"
+                    f"Line {node.lineno}: Disallowed builtin or OS call '{func_name}()'"
                 )
-            if node.func.id == "FastMCP":
+            if func_name == "FastMCP":
                 self.has_fastmcp_instance = True
 
-        # Check attribute calls: os.system(...), subprocess.Popen(...)
+        # Check attribute calls: os.system(...), my_os.popen(...), subprocess.Popen(...)
         elif isinstance(node.func, ast.Attribute):
             if isinstance(node.func.value, ast.Name):
                 module_name = node.func.value.id
                 attr_name = node.func.attr
-                if module_name == "os" and attr_name in self.BLOCKED_OS_CALLS:
+                if module_name in self.os_aliases and attr_name in self.BLOCKED_OS_CALLS:
                     self.violations.append(
-                        f"Line {node.lineno}: Disallowed OS call 'os.{attr_name}()'"
+                        f"Line {node.lineno}: Disallowed OS call '{module_name}.{attr_name}()'"
                     )
                 if module_name in self.BLOCKED_MODULES:
                     self.violations.append(
@@ -101,6 +104,8 @@ class SecurityNodeVisitor(ast.NodeVisitor):
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
+            if alias.name == "os" and alias.asname:
+                self.os_aliases.add(alias.asname)
             if self._is_blocked_module(alias.name):
                 self.violations.append(
                     f"Line {node.lineno}: Prohibited module import '{alias.name}'"
@@ -112,6 +117,13 @@ class SecurityNodeVisitor(ast.NodeVisitor):
             self.violations.append(
                 f"Line {node.lineno}: Prohibited from-import of module '{node.module}'"
             )
+        elif node.module == "os":
+            for alias in node.names:
+                if alias.name in self.BLOCKED_OS_CALLS:
+                    self.violations.append(
+                        f"Line {node.lineno}: Prohibited import of dangerous OS call 'os.{alias.name}'"
+                    )
+                    self.blocked_imported_names.add(alias.asname or alias.name)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef):

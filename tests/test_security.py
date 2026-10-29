@@ -14,7 +14,7 @@ def test_ssrf_protection():
     # Cloud metadata endpoint
     safe, msg = SpecIngestor._is_safe_remote_url("http://169.254.169.254/latest/meta-data/")
     assert not safe
-    assert "restricted network boundary" in msg or "prohibited" in msg
+    assert "restricted" in msg or "prohibited" in msg
 
     # Localhost / loopback
     safe, msg = SpecIngestor._is_safe_remote_url("http://localhost:8080/openapi.json")
@@ -35,7 +35,7 @@ def test_ssrf_protection():
     assert "Unsupported scheme" in msg
 
 
-def test_subprocess_env_scrubbing():
+def test_subprocess_env_scrubbing(monkeypatch):
     """Verify host secrets and API keys are completely stripped before subprocess invocation."""
     test_env = {
         "PATH": "/usr/bin:/bin",
@@ -47,29 +47,24 @@ def test_subprocess_env_scrubbing():
         "DB_PASSWORD": "mypassword",
     }
 
-    # Temporarily set in os.environ
     for k, v in test_env.items():
-        os.environ[k] = v
+        monkeypatch.setenv(k, v)
 
-    try:
-        sanitized = VerificationRunner._get_sanitized_env({"EXTRA_SAFE_VAR": "ok"})
+    sanitized = VerificationRunner._get_sanitized_env({"EXTRA_SAFE_VAR": "ok"})
 
-        assert "PATH" in sanitized
-        assert sanitized["EXTRA_SAFE_VAR"] == "ok"
+    assert "PATH" in sanitized
+    assert sanitized["EXTRA_SAFE_VAR"] == "ok"
 
-        # All sensitive tokens must be absent
-        assert "NEBIUS_API_KEY" not in sanitized
-        assert "NASA_API_KEY" not in sanitized
-        assert "AWS_SECRET_ACCESS_KEY" not in sanitized
-        assert "GITHUB_TOKEN" not in sanitized
-        assert "DB_PASSWORD" not in sanitized
-    finally:
-        for k in ("NEBIUS_API_KEY", "NASA_API_KEY", "AWS_SECRET_ACCESS_KEY", "GITHUB_TOKEN", "DB_PASSWORD"):
-            os.environ.pop(k, None)
+    # All sensitive tokens must be absent
+    assert "NEBIUS_API_KEY" not in sanitized
+    assert "NASA_API_KEY" not in sanitized
+    assert "AWS_SECRET_ACCESS_KEY" not in sanitized
+    assert "GITHUB_TOKEN" not in sanitized
+    assert "DB_PASSWORD" not in sanitized
 
 
 def test_ast_validator_sandbox_escapes():
-    """Verify that dangerous modules and reflective attributes are detected and blocked."""
+    """Verify that dangerous modules, reflective attributes, and aliased imports are blocked."""
     prohibited_snippets = [
         "import importlib; importlib.import_module('os')",
         "import ctypes; ctypes.string_at(0)",
@@ -80,6 +75,8 @@ def test_ast_validator_sandbox_escapes():
         "def foo():\n    return foo.__globals__",
         "os.system('id')",
         "os.popen('cat /etc/passwd')",
+        "import os as my_os; my_os.system('whoami')",
+        "from os import system; system('ls')",
         "eval('1 + 1')",
         "exec('import sys')",
     ]

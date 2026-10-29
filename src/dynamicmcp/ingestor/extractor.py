@@ -111,15 +111,9 @@ class SpecIngestor:
             for entry in addr_info:
                 ip_str = entry[4][0]
                 ip_obj = ipaddress.ip_address(ip_str)
-                if (
-                    ip_obj.is_loopback
-                    or ip_obj.is_private
-                    or ip_obj.is_link_local
-                    or ip_obj.is_multicast
-                    or ip_obj.is_reserved
-                    or ip_str == "169.254.169.254"
-                ):
-                    return False, f"Resolved IP {ip_str} is within a restricted network boundary"
+                # Reject all non-global (private, loopback, link-local, reserved) and cloud metadata addresses
+                if not ip_obj.is_global or ip_str == "169.254.169.254":
+                    return False, f"Resolved IP {ip_str} is within a restricted or non-global network boundary"
 
             return True, "Safe"
         except Exception as e:
