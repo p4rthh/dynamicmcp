@@ -11,11 +11,27 @@ class PolicyGenerator:
     """Generates declarative NemoClaw security policies enforcing strict egress and filesystem isolation."""
 
     @staticmethod
-    def generate_policy(spec: ToolSpec, output_path: Optional[Path | str] = None) -> str:
+    def _sanitize_domain(domain: str) -> Optional[str]:
+        """Sanitize domain string removing protocols, paths, and port numbers."""
+        if not domain:
+            return None
+        cleaned = domain.strip().lower()
+        if "://" in cleaned:
+            cleaned = cleaned.split("://", 1)[1]
+        cleaned = cleaned.split("/", 1)[0]
+        cleaned = cleaned.split(":", 1)[0]
+        # Reject cloud metadata IP
+        if cleaned in ("169.254.169.254", "metadata.google.internal"):
+            return None
+        return cleaned if cleaned else None
+
+    @classmethod
+    def generate_policy(cls, spec: ToolSpec, output_path: Optional[Path | str] = None) -> str:
         """Generate a NemoClaw policy YAML string and optionally persist it."""
-        allowed_domains = [spec.target_domain] if spec.target_domain != "localhost" else ["127.0.0.1", "localhost"]
-        # Remove empty or wildcard
-        allowed_domains = [d for d in allowed_domains if d]
+        clean_domain = cls._sanitize_domain(spec.target_domain)
+        allowed_domains = []
+        if clean_domain:
+            allowed_domains.append(clean_domain)
 
         policy_dict = {
             "version": "1.0",
@@ -86,13 +102,13 @@ class PolicyGenerator:
             },
         }
 
-        # Add zero-trust credentials injection rule if auth spec specifies a secret ref or header
-        if spec.auth and spec.auth.auth_type != AuthType.NONE:
+        # Add zero-trust credentials injection rule only if clean_domain is valid and auth spec specifies secrets
+        if clean_domain and spec.auth and spec.auth.auth_type != AuthType.NONE:
             policy_dict["security_policy"]["credentials"] = {
                 "injection_mode": "header",
                 "inject_only_for": [
                     {
-                        "domain": spec.target_domain,
+                        "domain": clean_domain,
                         "header": spec.auth.header_name or "Authorization",
                         "secret_ref": spec.auth.secret_ref or f"vault://{spec.name}/token",
                     }

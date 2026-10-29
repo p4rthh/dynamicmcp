@@ -45,6 +45,34 @@ class VerificationRunner:
                 logger.warning(f"Nebius Serverless Job submission failed: {e}. Falling back to local runner.")
                 return await self._run_local_verification(code, test_script)
 
+    @staticmethod
+    def _get_sanitized_env(extra: Optional[dict[str, str]] = None) -> dict[str, str]:
+        """Produce a sanitized environment dict blocking host credentials and tokens."""
+        # Baseline safe variables
+        safe_keys = {
+            "PATH",
+            "SYSTEMROOT",
+            "LANG",
+            "LC_ALL",
+            "LC_CTYPE",
+            "TMPDIR",
+            "TEMP",
+            "TMP",
+            "VIRTUAL_ENV",
+            "HOME",
+        }
+        sanitized = {k: v for k, v in os.environ.items() if k in safe_keys}
+
+        # Strip any credential-bearing variables
+        sensitive_patterns = ("KEY", "TOKEN", "SECRET", "AUTH", "PASS", "CREDENTIAL", "NEBIUS", "NVIDIA", "OPENAI", "AWS", "SSH")
+        for k in list(sanitized.keys()):
+            if any(pat in k.upper() for pat in sensitive_patterns):
+                sanitized.pop(k, None)
+
+        if extra:
+            sanitized.update(extra)
+        return sanitized
+
     async def _run_local_verification(self, code: str, test_script: str) -> VerificationResult:
         """Run verification in an isolated temporary directory using the current Python environment."""
         with tempfile.TemporaryDirectory(prefix="dynamicmcp_verify_") as tmpdir:
@@ -55,7 +83,8 @@ class VerificationRunner:
             tool_path.write_text(code, encoding="utf-8")
             test_path.write_text(test_script, encoding="utf-8")
 
-            # Execute pytest as subprocess
+            # Execute pytest as subprocess with scrubbed environment
+            clean_env = self._get_sanitized_env({"PYTHONPATH": str(tmppath)})
             proc = await asyncio.create_subprocess_exec(
                 sys.executable,
                 "-m",
@@ -66,7 +95,7 @@ class VerificationRunner:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(tmppath),
-                env={**os.environ, "PYTHONPATH": str(tmppath)},
+                env=clean_env,
             )
 
             try:
@@ -98,8 +127,7 @@ class VerificationRunner:
                 "command": [
                     "bash", "-c",
                     "pip install httpx pydantic fastmcp pytest pytest-asyncio && "
-                    "echo '$CODE' > /tmp/tool.py && "
-                    "echo '$TEST' > /tmp/test_tool.py && "
+                    "python3 -c \"import os; open('/tmp/tool.py', 'w').write(os.environ.get('CODE', '')); open('/tmp/test_tool.py', 'w').write(os.environ.get('TEST', ''))\" && "
                     "python -m pytest /tmp/test_tool.py -v --tb=short"
                 ],
                 "env": {

@@ -3,6 +3,9 @@
 import re
 import json
 import logging
+import socket
+import ipaddress
+from urllib.parse import urlparse
 import httpx
 from typing import Optional, Any
 from dynamicmcp.models.spec import ToolSpec, IngestType, EndpointSpec, ParameterSpec
@@ -81,21 +84,108 @@ class SpecIngestor:
             return IngestType.CLI
         return IngestType.TEXT
 
+    @staticmethod
+    def _is_safe_remote_url(url: str) -> tuple[bool, str]:
+        """Validate URL against SSRF threats (RFC 1918, link-local, loopback, cloud metadata)."""
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return False, f"Unsupported scheme: {parsed.scheme}"
+            
+            hostname = parsed.hostname
+            if not hostname:
+                return False, "Missing hostname in URL"
+
+            hostname_lower = hostname.lower()
+            if hostname_lower in ("localhost", "127.0.0.1", "::1"):
+                return False, "Access to localhost/loopback is prohibited"
+            if hostname_lower.endswith((".local", ".internal", ".localhost")):
+                return False, f"Access to internal domain '{hostname}' is prohibited"
+
+            # DNS resolution check for private/link-local/metadata IPs
+            try:
+                addr_info = socket.getaddrinfo(hostname, None)
+            except socket.gaierror as e:
+                return False, f"Failed to resolve hostname: {e}"
+
+            for entry in addr_info:
+                ip_str = entry[4][0]
+                ip_obj = ipaddress.ip_address(ip_str)
+                if (
+                    ip_obj.is_loopback
+                    or ip_obj.is_private
+                    or ip_obj.is_link_local
+                    or ip_obj.is_multicast
+                    or ip_obj.is_reserved
+                    or ip_str == "169.254.169.254"
+                ):
+                    return False, f"Resolved IP {ip_str} is within a restricted network boundary"
+
+            return True, "Safe"
+        except Exception as e:
+            return False, f"URL validation error: {e}"
+
+    @classmethod
+    async def _fetch_remote_spec_safely(cls, url: str, max_bytes: int = 5 * 1024 * 1024, max_redirects: int = 3) -> Optional[str]:
+        """Fetch remote spec safely with SSRF validation, validated redirect tracking, and size limits."""
+        current_url = url
+        redirect_count = 0
+
+        while redirect_count <= max_redirects:
+            is_safe, reason = cls._is_safe_remote_url(current_url)
+            if not is_safe:
+                logger.warning(f"Blocked unsafe remote spec URL '{current_url}': {reason}")
+                return None
+
+            try:
+                # Do not blindly follow redirects; validate each target against SSRF boundaries
+                async with httpx.AsyncClient(timeout=20.0, follow_redirects=False) as client:
+                    async with client.stream("GET", current_url) as response:
+                        if response.status_code in (301, 302, 303, 307, 308):
+                            location = response.headers.get("Location")
+                            if not location:
+                                logger.warning(f"Redirect from '{current_url}' had no Location header")
+                                return None
+                            from urllib.parse import urljoin
+                            current_url = urljoin(current_url, location)
+                            redirect_count += 1
+                            logger.info(f"Following validated redirect to {current_url}")
+                            continue
+
+                        if response.status_code != 200:
+                            logger.warning(f"Remote spec URL returned status {response.status_code}")
+                            return None
+                        
+                        chunks = []
+                        bytes_read = 0
+                        async for chunk in response.aiter_bytes():
+                            bytes_read += len(chunk)
+                            if bytes_read > max_bytes:
+                                logger.warning(f"Remote spec from '{current_url}' exceeded max size limit of {max_bytes} bytes")
+                                return None
+                            chunks.append(chunk)
+
+                        downloaded = b"".join(chunks).decode("utf-8", errors="replace")
+                        logger.info(f"Successfully downloaded remote spec from {current_url} ({bytes_read} bytes)")
+                        return downloaded
+            except Exception as e:
+                logger.warning(f"Failed to fetch remote spec URL '{current_url}': {e}")
+                return None
+
+        logger.warning(f"Exceeded maximum redirects ({max_redirects}) fetching spec")
+        return None
+
     async def ingest(self, raw_input: str, tool_name: Optional[str] = None) -> ToolSpec:
         """Extract a structured ToolSpec from raw input, local file, or remote URL."""
         actual_input = raw_input
         stripped = raw_input.strip()
 
-        # If input is a remote HTTP(S) URL to a spec file, fetch it
+        # If input is a remote HTTP(S) URL to a spec file, fetch it safely
         if (stripped.startswith("http://") or stripped.startswith("https://")) and not stripped.startswith("curl"):
-            try:
-                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                    resp = await client.get(stripped)
-                    if resp.status_code == 200:
-                        actual_input = resp.text
-                        logger.info(f"Successfully downloaded remote spec from {stripped}")
-            except Exception as e:
-                logger.warning(f"Failed to fetch remote spec URL: {e}")
+            fetched = await self._fetch_remote_spec_safely(stripped)
+            if not fetched:
+                raise ValueError(f"Failed to securely retrieve or parse remote specification from URL: {stripped}")
+            actual_input = fetched
 
         detected = self.detect_type(actual_input)
         logger.info(f"Detected input format: {detected.value}")

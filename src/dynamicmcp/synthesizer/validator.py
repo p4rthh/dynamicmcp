@@ -16,13 +16,56 @@ class ValidationResult(BaseModel):
 class SecurityNodeVisitor(ast.NodeVisitor):
     """Walks the AST to detect prohibited system calls and unsafe constructs."""
 
-    BLOCKED_FUNCTIONS = {"eval", "exec", "compile", "__import__"}
-    BLOCKED_MODULES = {"subprocess", "pty", "commands"}
+    BLOCKED_FUNCTIONS = {"eval", "exec", "compile", "__import__", "breakpoint"}
+    BLOCKED_MODULES = {
+        "subprocess",
+        "pty",
+        "commands",
+        "importlib",
+        "ctypes",
+        "pickle",
+        "shelve",
+        "marshal",
+        "shutil",
+        "socket",
+        "multiprocessing",
+    }
+    BLOCKED_ATTRIBUTES = {
+        "__subclasses__",
+        "__globals__",
+        "__builtins__",
+        "__code__",
+        "__reduce__",
+        "__reduce_ex__",
+    }
+    BLOCKED_OS_CALLS = {
+        "system",
+        "popen",
+        "spawn",
+        "spawnl",
+        "spawnv",
+        "execv",
+        "execve",
+        "execl",
+        "fork",
+        "kill",
+        "remove",
+        "unlink",
+        "rmdir",
+    }
 
     def __init__(self):
         self.violations: list[str] = []
         self.has_fastmcp_instance: bool = False
         self.tool_functions: list[str] = []
+
+    def visit_Attribute(self, node: ast.Attribute):
+        # Prohibit dangerous reflective attribute access
+        if node.attr in self.BLOCKED_ATTRIBUTES:
+            self.violations.append(
+                f"Line {node.lineno}: Prohibited reflective attribute access '{node.attr}'"
+            )
+        self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
         # Check direct function calls: eval(...), exec(...)
@@ -39,32 +82,33 @@ class SecurityNodeVisitor(ast.NodeVisitor):
             if isinstance(node.func.value, ast.Name):
                 module_name = node.func.value.id
                 attr_name = node.func.attr
-                if module_name == "os" and attr_name in ("system", "popen", "spawn", "execv", "execl"):
+                if module_name == "os" and attr_name in self.BLOCKED_OS_CALLS:
                     self.violations.append(
                         f"Line {node.lineno}: Disallowed OS call 'os.{attr_name}()'"
                     )
                 if module_name in self.BLOCKED_MODULES:
                     self.violations.append(
-                        f"Line {node.lineno}: Disallowed subprocess invocation '{module_name}.{attr_name}()'"
+                        f"Line {node.lineno}: Disallowed invocation '{module_name}.{attr_name}()'"
                     )
-            # Check attribute access to __subclasses__, __globals__
-            if node.func.attr in ("__subclasses__", "__globals__", "__builtins__"):
-                self.violations.append(
-                    f"Line {node.lineno}: Disallowed reflective call '{node.func.attr}()'"
-                )
 
         self.generic_visit(node)
 
+    def _is_blocked_module(self, mod_name: Optional[str]) -> bool:
+        if not mod_name:
+            return False
+        root = mod_name.split(".")[0]
+        return root in self.BLOCKED_MODULES
+
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
-            if alias.name in self.BLOCKED_MODULES:
+            if self._is_blocked_module(alias.name):
                 self.violations.append(
                     f"Line {node.lineno}: Prohibited module import '{alias.name}'"
                 )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module in self.BLOCKED_MODULES:
+        if self._is_blocked_module(node.module):
             self.violations.append(
                 f"Line {node.lineno}: Prohibited from-import of module '{node.module}'"
             )

@@ -64,8 +64,8 @@ Pass a live GitHub URL pointing to an OpenAPI JSON/YAML spec:
 ```bash
 dynamicmcp ingest "https://raw.githubusercontent.com/worldbank/open-api-specs/refs/heads/main/Data360%20Open_API.json" --name "world_bank_data360"
 
-# Query live World Bank indicators
-dynamicmcp run dynamic__get_data --args '{"DATABASE_ID": "WB_WDI", "INDICATOR": "WB_WDI_SP_POP_TOTL", "REF_AREA": "USA", "timePeriodFrom": "2020", "timePeriodTo": "2022"}'
+# Query live World Bank indicators (list all generated tools with `dynamicmcp list`)
+dynamicmcp run dynamic__world_bank_data360_data_v1 --args '{"DATABASE_ID": "WB_WDI", "INDICATOR": "WB_WDI_SP_POP_TOTL", "REF_AREA": "USA", "timePeriodFrom": "2020", "timePeriodTo": "2022"}'
 ```
 
 ### Scenario B: Authenticated REST API (NASA InSight Mars Weather)
