@@ -8,29 +8,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        nvidia: {
-          green: "#76B900",
-          hover: "#87D300",
-          dark: "#0F1905",
-          subtle: "#1B2F08",
+        base: {
+          950: "#050507",
+          900: "#09090b",
+          850: "#101014",
+          800: "#18181b",
+          700: "#27272a",
+          600: "#3f3f46",
+          500: "#52525b",
+          400: "#71717a",
+          300: "#a1a1aa",
+          200: "#e4e4e7",
+          100: "#f4f4f5",
         },
-        nebius: {
-          purple: "#7928CA",
-          blue: "#0070F3",
-          dark: "#0E0E18",
-        },
-        cyber: {
-          950: "#07090E",
-          900: "#0D1117",
-          850: "#131822",
-          800: "#1A202C",
-          700: "#2D3748",
-          600: "#4A5568",
+        brand: {
+          DEFAULT: "#ffffff",
+          invert: "#000000",
+          accent: "#f59e0b", // Warm amber accent for run latency/highlights
+          muted: "#3f3f46",
         }
       },
       fontFamily: {
-        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Geist"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       }
     },
   },

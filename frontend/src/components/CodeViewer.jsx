@@ -13,34 +13,28 @@ export default function CodeViewer({ code, language = 'python', filename = '' })
 
   if (!code) {
     return (
-      <div className="p-8 text-center text-slate-500 font-mono text-sm border border-cyber-800 rounded-lg bg-cyber-900/50">
-        No code generated yet.
+      <div className="p-6 text-center text-base-500 font-mono text-xs border border-base-800 rounded-lg bg-base-950">
+        No output generated.
       </div>
     );
   }
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-cyber-800 bg-[#0B0E14] text-slate-200 font-mono text-xs shadow-xl">
-      <div className="flex items-center justify-between px-4 py-2 bg-cyber-900/80 border-b border-cyber-800 text-slate-400">
-        <div className="flex items-center space-x-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500/70"></div>
-          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70"></div>
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500/70"></div>
-          {filename && <span className="ml-2 text-slate-300 font-medium text-xs">{filename}</span>}
-        </div>
-        <div className="flex items-center space-x-3">
-          <span className="uppercase tracking-wider text-[10px] text-slate-500 font-semibold">{language}</span>
+    <div className="rounded-lg border border-base-800 bg-base-950 text-base-200 font-mono text-xs overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 bg-base-900 border-b border-base-800/80">
+        <span className="text-base-400 font-medium text-[11px] truncate">{filename || language}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-base-500 uppercase tracking-wider">{language}</span>
           <button
             onClick={handleCopy}
-            className="flex items-center space-x-1.5 px-2 py-1 rounded bg-cyber-800 hover:bg-cyber-700 text-slate-300 hover:text-white transition-all text-[11px]"
-            title="Copy to clipboard"
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-base-800 hover:border-base-700 bg-base-850 hover:bg-base-800 text-base-300 hover:text-white transition-colors text-[11px]"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-nvidia-green" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied!' : 'Copy'}</span>
+            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
       </div>
-      <div className="p-4 max-h-[500px] overflow-auto">
+      <div className="p-3.5 max-h-[460px] overflow-auto">
         <pre className="leading-relaxed">
           <code>{code}</code>
         </pre>

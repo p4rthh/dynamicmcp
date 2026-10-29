@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, RefreshCw, AlertCircle, Check, Copy, Code, Terminal, Zap } from 'lucide-react';
+import { Play, RefreshCw, AlertCircle, Check } from 'lucide-react';
 import CodeViewer from './CodeViewer';
 
 export default function Playground({ presets = [], onToolCreated }) {
@@ -93,45 +93,44 @@ export default function Playground({ presets = [], onToolCreated }) {
 
   return (
     <div className="space-y-6">
-      {/* Quick Preset Selector */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-mono text-slate-500 mr-1">Presets:</span>
+      {/* Sleek Preset Selectors */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-mono text-base-500 mr-1">Templates:</span>
         {presets.map((p) => (
           <button
             key={p.id}
             onClick={() => handleSelectPreset(p)}
-            className="px-2.5 py-1 rounded bg-cyber-900 hover:bg-cyber-800 border border-cyber-800 hover:border-slate-700 text-xs font-mono text-slate-300 transition-colors"
+            className="px-2.5 py-1 rounded-md bg-base-850 hover:bg-base-800 border border-base-800 hover:border-base-700 text-xs text-base-300 hover:text-white transition-colors"
           >
-            {p.title}
+            {p.title.replace(' Forecast', '').replace(' Real-Time', '')}
           </button>
         ))}
       </div>
 
-      {/* Assembly Input Box */}
-      <div className="rounded-xl border border-cyber-800 bg-cyber-900/60 p-4 space-y-3">
-        <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-          <div className="flex items-center gap-2">
-            <Terminal className="w-3.5 h-3.5 text-nvidia-green" />
-            <span>Target API Contract</span>
-          </div>
+      {/* Assembly Input Container */}
+      <div className="rounded-xl border border-base-800 bg-base-950 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <span className="font-mono text-base-400 font-medium text-[11px] uppercase tracking-wider">
+            API Specification or Command
+          </span>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-[11px] text-base-400 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={offlineMode}
                 onChange={(e) => setOfflineMode(e.target.checked)}
-                className="rounded bg-cyber-950 border-cyber-700 text-nvidia-green focus:ring-0 w-3 h-3"
+                className="rounded bg-base-900 border-base-700 text-white focus:ring-0 w-3 h-3 cursor-pointer"
               />
               <span>Offline / Mock</span>
             </label>
             <div className="flex items-center gap-1.5">
-              <span>Name:</span>
+              <span className="text-base-500 font-mono text-[11px]">Name:</span>
               <input
                 type="text"
                 value={toolName}
                 onChange={(e) => setToolName(e.target.value)}
-                placeholder="tool_name"
-                className="px-2 py-0.5 rounded bg-cyber-950 border border-cyber-800 text-slate-200 text-xs font-mono w-40 focus:outline-none focus:border-nvidia-green"
+                placeholder="optional_name"
+                className="px-2 py-0.5 rounded bg-base-900 border border-base-800 text-base-200 text-xs font-mono w-36 focus:outline-none focus:border-base-600"
               />
             </div>
           </div>
@@ -141,24 +140,27 @@ export default function Playground({ presets = [], onToolCreated }) {
           rows={3}
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
-          placeholder="Paste raw curl command, remote OpenAPI spec URL, or CLI syntax..."
-          className="w-full px-3 py-2 rounded-lg bg-cyber-950 border border-cyber-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-nvidia-green"
+          placeholder="curl -X GET 'https://...' or OpenAPI spec URL..."
+          className="w-full px-3 py-2.5 rounded-lg bg-base-900 border border-base-800 text-base-200 font-mono text-xs focus:outline-none focus:border-base-600 leading-relaxed"
         />
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] font-mono text-base-500">
+            Auto-synthesizes Pydantic models, sandbox policy, and FastMCP server.
+          </span>
           <button
             onClick={handleAssemble}
             disabled={loading || !inputVal.trim()}
-            className="px-4 py-1.5 rounded-lg bg-nvidia-green hover:bg-nvidia-hover text-black font-semibold font-mono text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-1.5 rounded-md bg-white hover:bg-base-200 text-black font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
             {loading ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Assembling FastMCP Server...</span>
+                <span>Assembling...</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 fill-black" />
+                <Play className="w-3 h-3 fill-black" />
                 <span>Assemble Tool</span>
               </>
             )}
@@ -166,25 +168,24 @@ export default function Playground({ presets = [], onToolCreated }) {
         </div>
       </div>
 
-      {/* Error Message */}
+      {/* Error Card */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-950/30 border border-red-500/40 text-red-300 text-xs font-mono flex items-center gap-2">
+        <div className="p-3.5 rounded-lg bg-red-950/20 border border-red-900/50 text-red-300 text-xs font-mono flex items-center gap-2.5">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Result Section: Code & Interactive Execution */}
+      {/* Assembly Output & Live Test Split */}
       {result && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left Column: FastMCP Generated Code */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
+          {/* FastMCP Python Script */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
-                <Code className="w-3.5 h-3.5 text-nvidia-green" />
-                <span>Synthesized FastMCP Code</span>
+            <div className="flex items-center justify-between text-xs text-base-400">
+              <span className="font-medium text-white font-mono text-[11px] uppercase tracking-wider">
+                FastMCP Server Code
               </span>
-              <span className="text-[11px] text-nvidia-green">{result.duration_ms}ms</span>
+              <span className="text-[11px] font-mono text-base-500">{result.duration_ms}ms</span>
             </div>
             <CodeViewer
               code={result.generated_code}
@@ -193,37 +194,39 @@ export default function Playground({ presets = [], onToolCreated }) {
             />
           </div>
 
-          {/* Right Column: Execution Console */}
+          {/* Test Execution Console */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
-                <Zap className="w-3.5 h-3.5 text-nvidia-green" />
-                <span>Test Execution ({result.registered_tools?.[0]})</span>
+            <div className="flex items-center justify-between text-xs text-base-400">
+              <span className="font-medium text-white font-mono text-[11px] uppercase tracking-wider">
+                Interactive Test Console
               </span>
+              <span className="text-[11px] font-mono text-base-400">{result.registered_tools?.[0]}</span>
             </div>
 
-            <div className="rounded-lg border border-cyber-800 bg-cyber-900/60 p-3 space-y-2">
-              <label className="text-[11px] font-mono text-slate-400">Arguments (JSON):</label>
+            <div className="rounded-xl border border-base-800 bg-base-950 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-mono text-base-400">Arguments (JSON):</label>
+              </div>
               <textarea
                 rows={3}
                 value={execArgs}
                 onChange={(e) => setExecArgs(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded bg-cyber-950 border border-cyber-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-nvidia-green"
+                className="w-full px-3 py-2 rounded-lg bg-base-900 border border-base-800 text-base-200 font-mono text-xs focus:outline-none focus:border-base-600"
               />
               <div className="flex justify-end">
                 <button
                   onClick={handleExecute}
                   disabled={executing}
-                  className="px-3 py-1 rounded bg-nvidia-green hover:bg-nvidia-hover text-black font-semibold font-mono text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="px-3.5 py-1.5 rounded-md bg-base-800 hover:bg-base-700 text-white font-medium text-xs flex items-center gap-1.5 transition-colors border border-base-700 disabled:opacity-40"
                 >
                   {executing ? (
                     <>
                       <RefreshCw className="w-3 h-3 animate-spin" />
-                      <span>Running...</span>
+                      <span>Invoking...</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-3 h-3 fill-black" />
+                      <Play className="w-3 h-3 fill-white" />
                       <span>Run Tool</span>
                     </>
                   )}
@@ -232,23 +235,23 @@ export default function Playground({ presets = [], onToolCreated }) {
             </div>
 
             {execError && (
-              <div className="p-3 rounded-lg bg-red-950/30 border border-red-500/40 text-red-300 text-xs font-mono">
+              <div className="p-3 rounded-lg bg-red-950/20 border border-red-900/40 text-red-300 text-xs font-mono">
                 {execError}
               </div>
             )}
 
             {execResult && (
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Output:
+                <div className="flex items-center justify-between text-[11px] font-mono text-base-400">
+                  <span className="text-white font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-400" /> Output Payload
                   </span>
-                  <span>⚡ {execResult.duration_ms}ms</span>
+                  <span className="text-brand-accent">⚡ {execResult.duration_ms}ms</span>
                 </div>
                 <CodeViewer
                   code={JSON.stringify(execResult.result, null, 2)}
                   language="json"
-                  filename="output.json"
+                  filename="response.json"
                 />
               </div>
             )}
