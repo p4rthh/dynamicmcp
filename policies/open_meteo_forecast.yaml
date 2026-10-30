@@ -1,0 +1,59 @@
+version: '1.0'
+sandbox:
+  name: sandbox-open-meteo-forecast
+  agent_harness: hermes
+  description: Auto-generated tool from curl for api.open-meteo.com/v1/forecast
+security_policy:
+  default_action: deny
+  filesystem:
+    readonly_paths:
+    - /usr
+    - /lib
+    - /lib64
+    - /etc/ssl
+    - /etc/resolv.conf
+    writable_paths:
+    - /tmp/workspace
+    blocked_paths:
+    - /home/*/.ssh
+    - /home/*/.env
+    - /home/*/.config
+    - /home/*/.gnupg
+    - /proc/*/environ
+    - /etc/shadow
+    - /etc/passwd
+    blocked_patterns:
+    - '**/.*token*'
+    - '**/.*secret*'
+    - '**/.*credential*'
+    - '**/.*key.pem'
+  network:
+    allowed_domains:
+    - api.open-meteo.com
+    allowed_ports:
+    - 443
+    - 80
+    blocked_domains:
+    - '*.internal'
+    - metadata.google.internal
+    - 169.254.169.254
+    dns_allowed: true
+  process:
+    allowed_binaries:
+    - /usr/bin/python3
+    - /usr/local/bin/python3
+    max_processes: 4
+    max_memory_mb: 512
+    max_cpu_seconds: 30
+  presets:
+  - name: python-runtime
+    enabled: true
+  - name: dns-resolution
+    enabled: true
+  - name: shell-access
+    enabled: false
+audit:
+  log_level: info
+  log_destination: /tmp/workspace/audit.jsonl
+  record_network_requests: true
+  record_file_access: true
