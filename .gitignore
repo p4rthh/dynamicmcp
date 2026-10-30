@@ -47,6 +47,7 @@ policies/test_*.yaml
 # Hackathon Submission Drafts
 SUBMISSION.md
 DEVPOST_SUBMISSION.md
+NEBIUS_FEEDBACK.txt
 
 # IDE & Editor files
 .vscode/
