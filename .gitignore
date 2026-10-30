@@ -44,6 +44,10 @@ frontend/dist/
 # Test policies
 policies/test_*.yaml
 
+# Hackathon Submission Drafts
+SUBMISSION.md
+DEVPOST_SUBMISSION.md
+
 # IDE & Editor files
 .vscode/
 .idea/
